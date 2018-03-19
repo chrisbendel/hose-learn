@@ -16,65 +16,31 @@ db = client['hose']
 
 clusters = db.clusters
 songs = db.song_collection
-song_features = db.song_features
+song_features = db.songs
 usersdb = db.user
-
-# pprint.pprint(clusters.find({}))
-users = usersdb.find({}).limit(1)
-
-song_features_dict = {"features": [], "labels": []}
-
-base_nums = []
-
-for key in song_features.find_one().keys():
-  if key != '_id':
-    base_nums.append(tf.feature_column.numeric_column(key))
+historydb = db.play_history
 
 
-def convert(arg):
+def my_func(arg):
   arg = tf.convert_to_tensor(arg, dtype=tf.float32)
-  return arg
+  return tf.matmul(arg, arg) + arg
 
-def input_fn():
-  for user in users:
-    progress = 0
-    for song in user['likes']:
-      training = song_features.find_one({"Field_0": song['song_id']})
-      if training != None:
-        del(training['_id'])
-        # print(training)
-        song_features_dict["features"].append(training)
-      progress = progress + 1
-      percent = progress/1000 * 100
-      sys.stdout.write("progress: %d%%   \r" % (percent) )
-      sys.stdout.flush()
 
-    print("converting to dataframe")
-    song_features_dict["labels"] = base_nums
-    df = pd.DataFrame.from_dict(song_features_dict, orient='index')
-    matrix = df.as_matrix()
-    
-    print("converted")
-    # print(len(matrix))
-    features = []
-    print(matrix)
-    for value in matrix[0]:
-      print(value)
+training_data = []
+training_labels = ["liked", "dislike", "skippped", "total_plays", "completed"]
 
-    labels = matrix[1]
+for song in historydb.find():
+  merge = dict()
+  features = song_features.find_one({'Field_0': int(song['song_id'])})
+  merge.update(features)
+  merge.update(song)
 
-    # Assume that each row of `features` corresponds to the same row as `labels`.
-    assert features.shape[0] == labels.shape[0]
+  training_data.append(merge)
 
-    dataset = tf.data.Dataset.from_tensor_slices((features, labels))
+# print(training_data)
 
-    iterator = matrix.make_one_shot_iterator()
-    nums, labels = iterator.get_next()
-    return nums, labels
+training_np = pd.DataFrame(training_data)
 
-print(len(base_nums))
-model_dir = tempfile.mkdtemp()
-model = tf.estimator.LinearClassifier(
-    model_dir=model_dir, feature_columns=base_nums)
+pprint.pprint(training_np)
 
-model.train(input_fn=lambda: input_fn())
+num_columns = []
