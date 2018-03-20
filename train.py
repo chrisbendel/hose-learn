@@ -10,25 +10,26 @@ import tensorflow as tf
 import tempfile
 import sys
 
-
+# Mongo Client
 client = MongoClient('mongodb://hose:cawRXPhUuDT7uKPT@hose-shard-00-00-wndna.mongodb.net:27017,hose-shard-00-01-wndna.mongodb.net:27017,hose-shard-00-02-wndna.mongodb.net:27017/test?ssl=true&replicaSet=hose-shard-0&authSource=admin')
+# Mongo Database
 db = client['hose']
 
+# Clusters collection
 clusters = db.clusters
+# Song information collection
 songs = db.song_collection
+# Song features collection
 song_features = db.songs
+# Users collection
 usersdb = db.user
+# User play history collection
 historydb = db.play_history
 
-
-def my_func(arg):
-  arg = tf.convert_to_tensor(arg, dtype=tf.float32)
-  return tf.matmul(arg, arg) + arg
-
-
+# Empty training data set
 training_data = []
-training_labels = ["liked", "dislike", "skippped", "total_plays", "completed"]
 
+# Get songs for user
 for song in historydb.find():
   merge = dict()
   features = song_features.find_one({'Field_0': int(song['song_id'])})
@@ -37,10 +38,59 @@ for song in historydb.find():
 
   training_data.append(merge)
 
-# print(training_data)
-
+# Make dataframe
 training_np = pd.DataFrame(training_data)
 
-pprint.pprint(training_np)
 
-num_columns = []
+# All columns including likes
+# Type: TensorFlow column
+
+base_columns = []
+# All columns excluding likes
+# Type: TensorFlow colum
+
+feature_columns = []
+# Names of all columns as strings
+# Type: Strings
+column_names = []
+
+# Clean Columns
+training_np = training_np.drop(['_id', 'song_id', 'user_id', 'Field_0'], axis=1)
+training_np[['like', 'completed', 'dislike']] = training_np[['like', 'completed', 'dislike']].astype(float)
+
+# Create base column names
+for column in training_np:    
+  base_columns.append(tf.feature_column.numeric_column(column))
+  column_names.append(column)
+
+# Set the feature columns
+feature_columns = base_columns
+
+# Remove Likes
+feature_columns.pop(72)
+
+# Remove likes from column names
+column_names.pop(72)
+
+# Like LABEL
+LABEL = 'like'
+
+
+def my_input_fn(data_set):
+  # Get feature values
+  feature_cols = {k: tf.constant(data_set[k].values)
+                  for k in column_names}
+
+  # Get like values
+  labels = tf.constant(data_set[LABEL].values)
+
+  # Return labels and feature cols
+  return feature_cols, labels
+
+
+model_dir = tempfile.mkdtemp()
+model = tf.estimator.LinearClassifier(
+    model_dir=model_dir, feature_columns=feature_columns)
+
+# Train Model 
+model.train(input_fn=lambda: my_input_fn(training_np))
