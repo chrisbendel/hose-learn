@@ -7,11 +7,13 @@ import pprint
 import pandas as pd
 import numpy as np
 import tensorflow as tf
+from tensorflow import logging
 import tempfile
 import sys
 # Just disables the warning, doesn't enable AVX/FMA
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+logging.set_verbosity(logging.INFO)
 
 # Mongo Client
 client = MongoClient('mongodb://hose:cawRXPhUuDT7uKPT@hose-shard-00-00-wndna.mongodb.net:27017,hose-shard-00-01-wndna.mongodb.net:27017,hose-shard-00-02-wndna.mongodb.net:27017/test?ssl=true&replicaSet=hose-shard-0&authSource=admin')
@@ -91,9 +93,9 @@ def my_input_fn(data_set):
   return feature_cols, labels
 
 
-model_dir = tempfile.mkdtemp()
+model_dir = './'
 model = tf.estimator.LinearClassifier(
     model_dir=model_dir, feature_columns=feature_columns)
 
 # Train Model 
-model.train(input_fn=lambda: my_input_fn(training_np))
+model.train(input_fn=lambda: my_input_fn(training_np), steps=10000)
