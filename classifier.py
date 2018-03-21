@@ -60,29 +60,31 @@ def _float_feature(value):
   return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
 def predict_loop(song):
-    
-  feature_dict = {}
-  for feature in song:
-    if(feature == '_id' or feature == 'Field_0'):
-      print('')
-    else: 
-      feature_dict[feature] = _float_feature(value=float(song[feature]))
+  while not coord.should_stop():
+  
+    feature_dict = {}
+    for feature in song:
+      if(feature == '_id' or feature == 'Field_0'):
+        print('Thread Begun')
+      else: 
+        feature_dict[feature] = _float_feature(value=float(song[feature]))
 
-  # Prepare model input
-  model_input = tf.train.Example(features=tf.train.Features(feature=feature_dict))
-  model_input = model_input.SerializeToString()
+    # Prepare model input
+    model_input = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+    model_input = model_input.SerializeToString()
 
-  # get the predictor , refer tf.contrib.predictor
-  predictor = tf.contrib.predictor.from_saved_model(exported_path)
-  # print(feature_dict)
-  output_dict = predictor({"inputs": [model_input]})
+    # get the predictor , refer tf.contrib.predictor
+    predictor = tf.contrib.predictor.from_saved_model(exported_path)
+    # print(feature_dict)
+    output_dict = predictor({"inputs": [model_input]})
 
-  # print(" prediction Label is ", output_dict['classes'])
-  # print('Probability : ' + str(np.argmax(output_dict['scores'])))
-  if(np.argmax(output_dict['scores']) > 0):
-    recommendations.append(song)
+    # print(" prediction Label is ", output_dict['classes'])
+    # print('Probability : ' + str(np.argmax(output_dict['scores'])))
+    if(np.argmax(output_dict['scores']) > 0):
+      recommendations.append(song)
 
-  print("Thread finished")  
+    print("Thread finished")  
+    coord.request_stop()
 
 with tf.Session() as sess:
   recommendations = []
