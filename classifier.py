@@ -30,7 +30,7 @@ usersdb = db.user
 # User play history collection
 historydb = db.play_history
 
-exported_path = './models/build/1521663599'
+exported_path = './models/build/1521673917'
 
 #PREDICT WITH MODEL
 test_query = songs.aggregate(
@@ -104,4 +104,5 @@ with tf.Session() as sess:
   coord.join(threads)
 
   print("recommendations: " + str(len(recommendations)))
-  pprint.pprint(recommendations)
+  for recommendation in recommendations:
+    print(recommendation['Field_0'])
