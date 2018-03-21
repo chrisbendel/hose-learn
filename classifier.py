@@ -5,6 +5,7 @@ from pymongo import MongoClient
 import pprint
 import pandas as pd
 import numpy as np
+import requests
 import tensorflow as tf
 from tensorflow import logging
 import tempfile
@@ -54,7 +55,8 @@ for data in test_query:
   sys.stdout.write('%.2f%% complete' % (iterator / 1000 * 100,))
   sys.stdout.flush()
 
-
+songsToExport = {}
+final = []
 
 def _float_feature(value):
   return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
@@ -72,8 +74,6 @@ def predict_loop(song):
     model_input = tf.train.Example(features=tf.train.Features(feature=feature_dict))
     model_input = model_input.SerializeToString()
 
-    
-
     # print(feature_dict)
     print("predicting")
     output_dict = predictor({"inputs": [model_input]})
@@ -81,14 +81,13 @@ def predict_loop(song):
     # print(" prediction Label is ", output_dict['classes'])
     # print('Probability : ' + str(np.argmax(output_dict['scores'])))
     if(np.argmax(output_dict['scores']) > 0):
+      songsToExport.update({song['Field_0']: output_dict['scores']})
+      final.append(song['Field_0'])
       recommendations.append(song)
 
     print("done.")
     coord.request_stop()
  
-
-
-    
 
 with tf.Session() as sess:
   recommendations = []
@@ -103,6 +102,12 @@ with tf.Session() as sess:
     t.start()
   coord.join(threads)
 
-  print("recommendations: " + str(len(recommendations)))
-  for recommendation in recommendations:
-    print(recommendation['Field_0'])
+  print("recommendations count: " + str(len(recommendations)))
+  # print(songsToExport)
+  # print(final)
+  # for recommendation in recommendations:
+  #   print(recommendation['Field_0'])
+
+for id in final:
+  res = requests.get("http://phish.in/api/v1/tracks/" + str(id)).json()['data']
+  print(res['title'] + " " + res['show_date'])
