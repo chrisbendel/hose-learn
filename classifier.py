@@ -61,21 +61,21 @@ def _float_feature(value):
 
 def predict_loop(song):
   while not coord.should_stop():
-  
     feature_dict = {}
     for feature in song:
       if(feature == '_id' or feature == 'Field_0'):
         print('Thread Begun')
       else: 
         feature_dict[feature] = _float_feature(value=float(song[feature]))
-
+    
     # Prepare model input
     model_input = tf.train.Example(features=tf.train.Features(feature=feature_dict))
     model_input = model_input.SerializeToString()
 
-    # get the predictor , refer tf.contrib.predictor
-    predictor = tf.contrib.predictor.from_saved_model(exported_path)
+    
+
     # print(feature_dict)
+    print("predicting")
     output_dict = predictor({"inputs": [model_input]})
 
     # print(" prediction Label is ", output_dict['classes'])
@@ -83,15 +83,20 @@ def predict_loop(song):
     if(np.argmax(output_dict['scores']) > 0):
       recommendations.append(song)
 
-    print("Thread finished")  
+    print("done.")
     coord.request_stop()
+ 
+
+
+    
 
 with tf.Session() as sess:
   recommendations = []
   tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], exported_path)
   
   coord = tf.train.Coordinator()
-
+  # get the predictor , refer tf.contrib.predictor
+  predictor = tf.contrib.predictor.from_saved_model(exported_path)
   threads = [Thread(target=predict_loop, args=(song,)) for song in test_data]
   
   for t in threads:
