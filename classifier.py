@@ -11,6 +11,8 @@ import tempfile
 import sys
 # Just disables the warning, doesn't enable AVX/FMA
 import os
+from threading import Thread
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Mongo Client
@@ -32,7 +34,7 @@ exported_path = './models/build/1521663599'
 
 #PREDICT WITH MODEL
 test_query = songs.aggregate(
-   [ { '$sample': { "size": 100 } } ]
+   [ { '$sample': { "size": 1000 } } ]
 )
 
 test_data = []
@@ -49,7 +51,7 @@ for data in test_query:
   iterator = iterator + 1
 
   sys.stdout.write('\r')
-  sys.stdout.write('%.2f%% complete' % (iterator / 100 * 100,))
+  sys.stdout.write('%.2f%% complete' % (iterator / 1000 * 100,))
   sys.stdout.flush()
 
 
@@ -57,36 +59,42 @@ for data in test_query:
 def _float_feature(value):
   return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
+def predict_loop(song):
+    
+  feature_dict = {}
+  for feature in song:
+    if(feature == '_id' or feature == 'Field_0'):
+      print('')
+    else: 
+      feature_dict[feature] = _float_feature(value=float(song[feature]))
+
+  # Prepare model input
+  model_input = tf.train.Example(features=tf.train.Features(feature=feature_dict))
+  model_input = model_input.SerializeToString()
+
+  # get the predictor , refer tf.contrib.predictor
+  predictor = tf.contrib.predictor.from_saved_model(exported_path)
+  # print(feature_dict)
+  output_dict = predictor({"inputs": [model_input]})
+
+  # print(" prediction Label is ", output_dict['classes'])
+  # print('Probability : ' + str(np.argmax(output_dict['scores'])))
+  if(np.argmax(output_dict['scores']) > 0):
+    recommendations.append(song)
+
+  print("Thread finished")  
+
 with tf.Session() as sess:
   recommendations = []
   tf.saved_model.loader.load(sess, [tf.saved_model.tag_constants.SERVING], exported_path)
+  
+  coord = tf.train.Coordinator()
 
-  # load the saved model
-  iterator = 0;
-  for row in test_data:
-    feature_dict = {}
-    iterator = iterator + 1
+  threads = [Thread(target=predict_loop, args=(song,)) for song in test_data]
+  
+  for t in threads:
+    t.start()
+  coord.join(threads)
 
-    sys.stdout.write('\r')
-    sys.stdout.write('%.2f%% of rows complete' % (iterator / 100 * 100,))
-    sys.stdout.flush()
-    for feature in row:
-      if(feature == '_id' or feature == 'Field_0'):
-        print('')
-      else: 
-        feature_dict[feature] = _float_feature(value=float(row[feature]))
-
-    # Prepare model input
-    model_input = tf.train.Example(features=tf.train.Features(feature=feature_dict))
-    model_input = model_input.SerializeToString()
-
-    # get the predictor , refer tf.contrib.predictor
-    predictor = tf.contrib.predictor.from_saved_model(exported_path)
-    # print(feature_dict)
-    output_dict = predictor({"inputs": [model_input]})
-
-    # print(" prediction Label is ", output_dict['classes'])
-    # print('Probability : ' + str(np.argmax(output_dict['scores'])))
-    if(np.argmax(output_dict['scores']) > 0):
-      recommendations.append(row)
-  print(recommendations)
+  print("recommendations: " + str(len(recommendations)))
+  pprint.pprint(recommendations)
