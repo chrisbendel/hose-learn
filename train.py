@@ -10,6 +10,7 @@ import tensorflow as tf
 from tensorflow import logging
 import tempfile
 import sys
+import uuid
 # Just disables the warning, doesn't enable AVX/FMA
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -60,8 +61,9 @@ feature_columns = []
 column_names = []
 
 # Clean Columns
-training_np = training_np.drop(['_id', 'song_id', 'user_id', 'Field_0'], axis=1)
-training_np[['like', 'completed', 'dislike']] = training_np[['like', 'completed', 'dislike']].astype(float)
+training_np = training_np.drop(['_id', 'song_id', 'user_id', 'Field_0', 'completed', 'dislike','skipped','total_plays'], axis=1)
+# training_np[['like', 'completed', 'dislike']] = training_np[['like', 'completed', 'dislike']].astype(float)
+training_np[['like']] = training_np[['like']].astype(float)
 
 # Create base column names
 for column in training_np:    
@@ -72,10 +74,12 @@ for column in training_np:
 feature_columns = base_columns
 
 # Remove Likes
-feature_columns.pop(72)
-
+feature_columns.pop(70)
+for feature in feature_columns: 
+  print(feature)
+  print(len(feature_columns))
 # Remove likes from column names
-column_names.pop(72)
+column_names.pop(70)
 
 # Like LABEL
 LABEL = 'like'
@@ -88,14 +92,24 @@ def my_input_fn(data_set):
 
   # Get like values
   labels = tf.constant(data_set[LABEL].values)
-
+  
+  # print(feature_cols)
   # Return labels and feature cols
   return feature_cols, labels
 
 
-model_dir = './'
+model_dir = './models/tmp/' + str(uuid.uuid4().hex)
 model = tf.estimator.LinearClassifier(
     model_dir=model_dir, feature_columns=feature_columns)
 
+
 # Train Model 
+
 model.train(input_fn=lambda: my_input_fn(training_np), steps=10000)
+
+feature_spec = tf.feature_column.make_parse_example_spec(feature_columns)
+export_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec)
+servable_model_dir = "./models/build/"
+servable_model_path = model.export_savedmodel(servable_model_dir, export_input_fn)
+print("Done Exporting at Path - %s", servable_model_path )
+
