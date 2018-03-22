@@ -31,7 +31,7 @@ usersdb = db.user
 # User play history collection
 historydb = db.play_history
 
-exported_path = './models/build/1521673917'
+exported_path = './models/build/1521683412'
 
 #PREDICT WITH MODEL
 test_query = songs.aggregate(
