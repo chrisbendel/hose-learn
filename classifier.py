@@ -60,7 +60,7 @@ for c_song in clustered_songs:
   if song_f not in new_data:
     new_data.append(song_f)
 
-print(new_data)
+# print(new_data)
 
 test_data = []
 iterator = 0
