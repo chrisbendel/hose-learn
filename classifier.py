@@ -32,14 +32,14 @@ usersdb = db.user
 historydb = db.play_history
 
 #sample size
-SAMPLE_SIZE = 4285
+SAMPLE_SIZE = 200
 exported_path = './models/build/1521744594'
 predictor = tf.contrib.predictor.from_saved_model(exported_path)
 
-#PREDICT WITH MODEL
-# test_query = songs.aggregate(
-#    [ { '$sample': { "size": SAMPLE_SIZE } } ]
-# )
+# PREDICT WITH MODEL
+test_query = songs.aggregate(
+   [ { '$sample': { "size": SAMPLE_SIZE } } ]
+)
 
 new_data = []
 user_songs = historydb.find({"user_id": "5aae90ec037335016f8f6796"})
@@ -65,17 +65,18 @@ print(new_data)
 test_data = []
 iterator = 0
 
-# for data in test_query:
-#   merge = dict()
-#   features = song_features.find_one({'Field_0': int(data['id'])})
-#   merge.update(features)
+for data in test_query:
+  merge = dict()
+  features = song_features.find_one({'Field_0': int(data['id'])})
+  merge.update(features)
 
-#   test_data.append(merge)
-#   iterator = iterator + 1
+  new_data.append(merge)
+  iterator = iterator + 1
 
-#   sys.stdout.write('\r')
-#   sys.stdout.write('%.2f%% complete' % (iterator / SAMPLE_SIZE * 100,))
-#   sys.stdout.flush()
+  sys.stdout.write('\r')
+  sys.stdout.write('%.2f%% complete' % (iterator / SAMPLE_SIZE * 100,))
+  sys.stdout.flush()
+
 
 songsToExport = {}
 final = []
