@@ -105,8 +105,8 @@ model_dir = './models/tmp/' + str(uuid.uuid4().hex)
 model = tf.estimator.LinearClassifier(
     model_dir=model_dir, feature_columns=feature_columns,
     optimizer=tf.train.FtrlOptimizer(
-        learning_rate=0.1,
-        l1_regularization_strength=0.2,
+        learning_rate=0.5,
+        l1_regularization_strength=5,
         l2_regularization_strength=0.1))
 
 
