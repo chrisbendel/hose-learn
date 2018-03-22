@@ -39,10 +39,13 @@ training_data = []
 for song in historydb.find():
   merge = dict()
   features = song_features.find_one({'Field_0': int(song['song_id'])})
-  merge.update(features)
-  merge.update(song)
+  if(features == None): 
+    None
+  else:
+    merge.update(features)
+    merge.update(song)
+    training_data.append(merge)
 
-  training_data.append(merge)
 
 # Make dataframe
 training_np = pd.DataFrame(training_data)
@@ -103,8 +106,8 @@ model = tf.estimator.LinearClassifier(
     model_dir=model_dir, feature_columns=feature_columns,
     optimizer=tf.train.FtrlOptimizer(
         learning_rate=0.1,
-        l1_regularization_strength=1.0,
-        l2_regularization_strength=1.0))
+        l1_regularization_strength=0.2,
+        l2_regularization_strength=0.1))
 
 
 # Train Model 
